@@ -344,9 +344,9 @@ uint8_t ESP8266_UDP_Send(char *data)
     while(cnt--)
     {
         memset(tx_buf, 0, sizeof(tx_buf));//清空发送缓冲
-        sprintf((char*)tx_buf, "AT+CIPSEND=%d\r\n", sizeof(data));//数据长度
+        sprintf((char*)tx_buf, "AT+CIPSEND=%d\r\n", strlen(data));//数据长度
         ESP8266_ATSendString((char*)tx_buf);
-        if(FindStr((char*)rx_buf,"OK",8000) != 0)
+        if(FindStr((char*)rx_buf,"OK",20) != 0)
         {
             break;
         }
@@ -359,7 +359,7 @@ uint8_t ESP8266_UDP_Send(char *data)
     while(cnt--)
     {
         ESP8266_ATSendString(data);
-        if(FindStr((char*)rx_buf,"OK",8000) != 0)
+        if(FindStr((char*)rx_buf,"OK",20) != 0)
         {
             break;
         }

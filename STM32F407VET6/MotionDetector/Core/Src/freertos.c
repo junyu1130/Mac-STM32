@@ -53,7 +53,7 @@
 #define UDP_IP          "192.168.4.2"
 #define UDP_PORT        9000
 //W25QXX FLASH
-#define FLASH_BUF_MAX 300
+#define FLASH_BUF_MAX 100
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -66,12 +66,19 @@
 extern uint32_t g_time_count;
 
 uint8_t g_seg_show = 2;//数码管默认显示秒、百分秒
-int g_timetxt_count = 0;
-bool g_mpu_start = false;
-bool g_mpu_save = false;
-char g_mpu_data[FLASH_BUF_MAX][100];
-int g_mpu_data_index_in = 0;
-int g_mpu_data_index_out = 0;
+int g_timetxt_count = 0;//记录时间的文件数据个数
+bool g_mpu_start = false;//开始读取
+bool g_mpu_save = false;//一个缓冲区存满可以存到flash中
+bool g_mpu_end = false;//最后结束的一部分缓冲区存入flash
+uint8_t g_mpu_data_save_dir = 1;//双缓冲存储 flash存储100组数据大概1.5s
+char g_mpu_data_buf1[FLASH_BUF_MAX][150];
+char g_mpu_data_buf2[FLASH_BUF_MAX][150];
+int g_mpu_data_index_1 = 0;
+int g_mpu_data_index_2 = 0;
+int g_mpu_data_save_num = 0;//测试
+int g_mpu_data_read_num = 0;
+
+bool g_wifi_udp_en = false;
 /* USER CODE END Variables */
 /* Definitions for MainTask */
 osThreadId_t MainTaskHandle;
@@ -198,8 +205,10 @@ void MX_FREERTOS_Init(void) {
 /* USER CODE END Header_StartMainTask */
 void StartMainTask(void *argument) {
     /* USER CODE BEGIN StartMainTask */
-    uint32_t tick = 0;
-    char mpu_data[100];
+    uint32_t save_tick = 0;
+    uint32_t print_tick = 0;
+    char mpu_data[150];
+    char send_data[150] = {0};
 
     float SelfTest[6];               // Gyro and accelerometer self-test sensor output
     float aRes, gRes;                // scale resolutions per LSB for the sensors
@@ -257,88 +266,77 @@ void StartMainTask(void *argument) {
     } else {
         printf("ESP8266 Create AP FAIL!\r\n");
     }
-//    if (ESP8266_UDP_Connect(UDP_IP,UDP_PORT)) {
-//        printf("ESP8266 Create UDP OK!\r\n");
-//    } else {
-//        printf("ESP8266 Create UDP FAIL!\r\n");
-//    }
-
+    printf("Press K5 to Create UDP.\r\n");
     /* Infinite loop */
     for (;;) {
         if (g_mpu_start == true) {
-            if (MPU6050_readByte(MPU6050_ADDRESS, INT_STATUS) & 0x01) {  // check if data ready interrupt
-                MPU6050_readAccelData(accelCount);  // Read the x/y/z adc values
-                aRes = MPU6050_getAres();
+            if (osKernelGetTickCount() - save_tick >= 50) {
+                save_tick = osKernelGetTickCount();
+                if (MPU6050_readByte(MPU6050_ADDRESS, INT_STATUS) & 0x01) {  // check if data ready interrupt
+                    MPU6050_readAccelData(accelCount);  // Read the x/y/z adc values
+                    aRes = MPU6050_getAres();
 
-                // Now we'll calculate the accleration value into actual g's
-                ax = (float) accelCount[0] * aRes -
-                     accelBias[0];  // get actual g value, this depends on scale being set
-                ay = (float) accelCount[1] * aRes - accelBias[1];
-                az = (float) accelCount[2] * aRes - accelBias[2];
+                    // Now we'll calculate the accleration value into actual g's
+                    ax = (float) accelCount[0] * aRes -
+                         accelBias[0];  // get actual g value, this depends on scale being set
+                    ay = (float) accelCount[1] * aRes - accelBias[1];
+                    az = (float) accelCount[2] * aRes - accelBias[2];
 
-                MPU6050_readGyroData(gyroCount);  // Read the x/y/z adc values
-                gRes = MPU6050_getGres();
+                    MPU6050_readGyroData(gyroCount);  // Read the x/y/z adc values
+                    gRes = MPU6050_getGres();
 
-                // Calculate the gyro value into actual degrees per second
-                gx = (float) gyroCount[0] * gRes -
-                     gyroBias[0];  // get actual gyro value, this depends on scale being set
-                gy = (float) gyroCount[1] * gRes - gyroBias[1];
-                gz = (float) gyroCount[2] * gRes - gyroBias[2];
+                    // Calculate the gyro value into actual degrees per second
+                    gx = (float) gyroCount[0] * gRes -
+                         gyroBias[0];  // get actual gyro value, this depends on scale being set
+                    gy = (float) gyroCount[1] * gRes - gyroBias[1];
+                    gz = (float) gyroCount[2] * gRes - gyroBias[2];
 
-                tempCount = MPU6050_readTempData();  // Read the x/y/z adc values
-                temperature = ((float) tempCount) / 340. + 36.53; // Temperature in degrees Centigrade
+                    tempCount = MPU6050_readTempData();  // Read the x/y/z adc values
+                    temperature = ((float) tempCount) / 340. + 36.53; // Temperature in degrees Centigrade
 
+                    uint8_t test_min = (g_time_count / 100) / 60;
+                    uint8_t test_sec = (g_time_count / 100) % 60;
+                    uint8_t test_sec_100 = g_time_count % 100;
+                    sprintf(mpu_data,
+                            "ax:%6.1f mg, ay:%6.1f mg, az:%6.1f mg  gx:%6.1f deg/s, gy:%6.1f deg/s, gz:%6.1f deg/s  (%02d:%02d:%02d)\r\n",
+                            1000 * ax, 1000 * ay, 1000 * az, gx, gy, gz, test_min, test_sec, test_sec_100);
+                    if (g_mpu_data_save_dir == 1) {
+                        strcpy(g_mpu_data_buf1[g_mpu_data_index_1], mpu_data);
+                        if (g_mpu_data_index_1 < FLASH_BUF_MAX - 1) {
+                            g_mpu_data_index_1++;
+                        } else {
+                            g_mpu_data_index_1 = 0;
+                            g_mpu_data_save_dir = 2;
+                            g_mpu_save = true;
+                        }
+                    } else if (g_mpu_data_save_dir == 2) {
+                        strcpy(g_mpu_data_buf2[g_mpu_data_index_2], mpu_data);
+                        if (g_mpu_data_index_2 < FLASH_BUF_MAX - 1) {
+                            g_mpu_data_index_2++;
+                        } else {
+                            g_mpu_data_index_2 = 0;
+                            g_mpu_data_save_dir = 1;
+                            g_mpu_save = true;
+                        }
+                    }
+                }
+            }
+
+            if (osKernelGetTickCount() - print_tick >= 500) {//500ms
+                print_tick = osKernelGetTickCount();
                 uint8_t test_min = (g_time_count / 100) / 60;
                 uint8_t test_sec = (g_time_count / 100) % 60;
                 uint8_t test_sec_100 = g_time_count % 100;
-                sprintf(mpu_data,
-                        "ax:%.1f,ay:%.1f,az:%.1f mg gx:%.1f,gy:%.1f,gz:%.1f deg/s (%02d:%02d:%02d)\r\n",
-                        1000 * ax, 1000 * ay, 1000 * az, gx, gy, gz, test_min, test_sec, test_sec_100);
-                strcpy(g_mpu_data[g_mpu_data_index_in], mpu_data);
-                if (g_mpu_data_index_in < FLASH_BUF_MAX - 1) {
-                    g_mpu_data_index_in++;
-                } else {
-                    g_mpu_data_index_in = 0;
+                sprintf(send_data,
+                        "HDU;%02d:%02d:%02d;%.1f;%.1f;%.1f;%.1f;%.1f;%.1f",
+                        test_min, test_sec, test_sec_100, 1000 * ax, 1000 * ay, 1000 * az, gx, gy, gz);
+                printf("%s\r\n", send_data);
+                if (g_wifi_udp_en == true) {
+                    ESP8266_UDP_Send(send_data);
                 }
-                if (g_mpu_save == false) {
-                    f_unlink("0:/data.txt");
-                    g_mpu_save = true;
-                }
-            }
-
-            if (osKernelGetTickCount() - tick >= 500) {//500ms
-                // Print acceleration values in milligs!
-                printf("X-acceleration: ");
-                printf("%.1f", 1000 * ax);
-                printf(" mg ");
-                printf("Y-acceleration: ");
-                printf("%.1f", 1000 * ay);
-                printf(" mg ");
-                printf("Z-acceleration: ");
-                printf("%.1f", 1000 * az);
-                printf(" mg\r\n");
-
-                // Print gyro values in degree/sec
-                printf("X-gyro rate: ");
-                printf("%.1f", gx);
-                printf(" degrees/sec ");
-                printf("Y-gyro rate: ");
-                printf("%.1f", gy);
-                printf(" degrees/sec ");
-                printf("Z-gyro rate: ");
-                printf("%.1f", gz);
-                printf(" degrees/sec\r\n");
-
-                // Print temperature in degrees Centigrade
-                printf("Temperature is ");
-                printf("%.2f", temperature);
-                printf(" degrees C\r\n"); // Print T values to tenths of s degree C
-                printf("\r\n");
-
-                tick = osKernelGetTickCount();
             }
         }
-        osDelay(50);
+        osDelay(1);
     }
     /* USER CODE END StartMainTask */
 }
@@ -353,6 +351,8 @@ void StartMainTask(void *argument) {
 void StartKeyTask(void *argument) {
     /* USER CODE BEGIN StartKeyTask */
     uint8_t key_state;
+    bool wifi_udp_flag = true;
+
     W25QXX_Init();
     printf("W25QXX FLASH ID = 0x%04X\r\n", W25QXX_ReadID());
     LoadPara();
@@ -424,14 +424,35 @@ void StartKeyTask(void *argument) {
             case 4:
                 PrintfData();
                 break;
-            case 5://清零并开始计时
-                g_time_count = 0;
-                HAL_TIM_Base_Start_IT(&htim3);
-                g_mpu_start = true;
+            case 5://建立UDP，清零并开始计时
+                if (wifi_udp_flag == true) {
+                    wifi_udp_flag = false;
+                    if (ESP8266_UDP_Connect(UDP_IP, UDP_PORT)) {
+                        printf("ESP8266 Create UDP OK!\r\n");
+                        g_wifi_udp_en = true;
+                    } else {
+                        printf("ESP8266 Create UDP FAIL!\r\n");
+                    }
+                    printf("Now press K5 to start.\r\n");
+                } else {
+                    g_time_count = 0;
+                    f_unlink("0:/data.txt");
+                    g_mpu_data_save_dir = 1;
+                    g_mpu_data_index_1 = 0;
+                    g_mpu_data_index_2 = 0;
+                    g_mpu_data_save_num = 0;
+                    HAL_TIM_Base_Start_IT(&htim3);
+                    g_mpu_start = true;
+                }
                 break;
             case 6://停止计时并记录
                 HAL_TIM_Base_Stop_IT(&htim3);
                 g_mpu_start = false;
+                g_mpu_end = true;
+                char send_data[10];
+                sprintf(send_data, "STOP");
+                printf("%s\r\n", send_data);
+                ESP8266_UDP_Send(send_data);
                 if (g_timetxt_count >= 100) {//大于100个数据时覆盖文件
                     HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
                     f_unlink("0:/time.txt");
@@ -523,10 +544,11 @@ void StartSaveTask(void *argument) {
     for (;;) {
         if (g_mpu_save == true) {
             SaveData();
-            if (g_mpu_start == false && g_mpu_data_index_in == g_mpu_data_index_out) {
-                g_mpu_save = false;
-                printf("Save MPU Data OK!\r\n");
-            }
+            g_mpu_save = false;
+        } else if (g_mpu_end == true) {
+            SaveData();
+            g_mpu_end = false;
+            printf("Save MPU Data OK!\r\n");
         }
         osDelay(1);
     }
@@ -615,11 +637,27 @@ void SaveData(void) {
     if (res != FR_OK) {
         printf("open file error.\r\n");
     } else {
-        f_puts(g_mpu_data[g_mpu_data_index_out], &fil);
-        if (g_mpu_data_index_out < FLASH_BUF_MAX - 1) {
-            g_mpu_data_index_out++;
-        } else {
-            g_mpu_data_index_out = 0;
+        for (int i = 0; i < FLASH_BUF_MAX; ++i) {
+            g_mpu_data_save_num++;
+            if (g_mpu_end == false) {
+                if (g_mpu_data_save_dir == 1) {
+                    f_puts(g_mpu_data_buf2[i], &fil);
+                } else if (g_mpu_data_save_dir == 2) {
+                    f_puts(g_mpu_data_buf1[i], &fil);
+                }
+            } else {
+                if (g_mpu_data_save_dir == 1) {
+                    f_puts(g_mpu_data_buf1[i], &fil);
+                    if (i == g_mpu_data_index_1 - 1) {
+                        break;
+                    }
+                } else if (g_mpu_data_save_dir == 2) {
+                    f_puts(g_mpu_data_buf2[i], &fil);
+                    if (i == g_mpu_data_index_2 - 1) {
+                        break;
+                    }
+                }
+            }
         }
         f_close(&fil);
     }
@@ -628,16 +666,25 @@ void SaveData(void) {
 void PrintfData(void) {
     FIL fil;//文件对象
     FRESULT res;//操作返回结果
-    char buf[100];
+    char buf[150];
 
     res = f_open(&fil, "0:/data.txt", FA_READ | FA_OPEN_ALWAYS);
     if (res != FR_OK) {
         printf("open file error.\r\n");
     } else {
         f_lseek(&fil, 0);
-        while (f_gets(buf, 100, &fil)) {
+        while (f_gets(buf, 150, &fil)) {
             printf("%s", buf);
+            g_mpu_data_read_num++;
         }
+        printf("save data num:%d, read data num:%d\r\n", g_mpu_data_save_num, g_mpu_data_read_num);
+        if (g_mpu_data_save_num == g_mpu_data_read_num) {
+            printf("all data is saved.\r\n");
+        } else {
+            printf("not all data is saved, please check it.\r\n");
+        }
+        g_mpu_data_read_num = 0;
+
         f_close(&fil);
     }
 }
