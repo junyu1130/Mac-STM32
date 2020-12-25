@@ -27,9 +27,11 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
+#include <stdbool.h>
 #include "adc.h"
 #include "tim.h"
 #include "dac.h"
+#include "w25qxx.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -49,7 +51,11 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
+extern bool g_record_end_flag;
+extern bool g_play_end_flag;
 
+bool g_play_start_flag = false;
+bool g_play_flag = false;
 /* USER CODE END Variables */
 /* Definitions for MainTask */
 osThreadId_t MainTaskHandle;
@@ -129,8 +135,21 @@ void MX_FREERTOS_Init(void) {
 void StartMainTask(void *argument)
 {
   /* USER CODE BEGIN StartMainTask */
+    W25QXX_Init();
+    printf("W25QXX FLASH ID = 0x%04X\r\n", W25QXX_ReadID());
     /* Infinite loop */
     for (;;) {
+        if (g_record_end_flag){
+            printf("Recording end\n");
+            W25QXX_Write((uint8_t *)dma_buff1, 0, sizeof(dma_buff1));
+            printf("Recording save ok\n");
+            g_record_end_flag = false;
+        }
+        if (g_play_end_flag){
+            printf("Playing end\n");
+            g_play_end_flag = false;
+            g_play_start_flag = false;
+        }
         osDelay(1);
     }
   /* USER CODE END StartMainTask */
@@ -203,12 +222,41 @@ void StartKeyTask(void *argument)
         //按键触发控制
         switch (key_state) {
             case 1:
+                W25QXX_Read((uint8_t *)dma_buff1, 0, sizeof(dma_buff1));
+                printf("Read recording ok\n");
                 break;
             case 2:
+                if (g_play_start_flag) {
+                    if (g_play_flag){
+                        HAL_TIM_Base_Stop(&htim5);
+                        g_play_flag = false;
+                        printf("Playing pause\n");
+                    } else {
+                        HAL_TIM_Base_Start(&htim5);
+                        g_play_flag = true;
+                        printf("Playing continue\n");
+                    }
+                }
                 break;
             case 3:
+                if (g_play_start_flag) {
+                    HAL_TIM_Base_Stop(&htim5);
+                    HAL_DAC_Stop_DMA(&hdac, DAC_CHANNEL_1);
+                    HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, (uint32_t *)dma_buff1, MAX_DMA_BUFF_SIZE, DAC_ALIGN_12B_R);
+                    HAL_TIM_Base_Start(&htim5);
+                    printf("Playing Restart\n");
+                    g_play_flag = true;
+                }
                 break;
             case 4:
+                for (int i = 0; i < MAX_DMA_BUFF_SIZE; ++i) {
+                    printf("%02X %02X", (uint8_t)(dma_buff1[i] >> 8), (uint8_t)dma_buff1[i]);
+                    if (i == MAX_DMA_BUFF_SIZE - 1){
+                        printf("\n");
+                    } else {
+                        printf(" ");
+                    }
+                }
                 break;
             case 5:
                 printf("Recording begin\n");
@@ -224,6 +272,8 @@ void StartKeyTask(void *argument)
                 HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, (uint32_t *)dma_buff1, MAX_DMA_BUFF_SIZE, DAC_ALIGN_12B_R);
                 HAL_TIM_Base_Start(&htim5);
 #endif
+                g_play_start_flag = true;
+                g_play_flag = true;
                 break;
             default:
                 break;

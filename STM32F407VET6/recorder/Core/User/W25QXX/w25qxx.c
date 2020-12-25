@@ -165,9 +165,9 @@ uint16_t W25QXX_ReadID(void)
 //pBuffer:数据存储区
 //ReadAddr:开始读取的地址(24bit)
 //NumByteToRead:要读取的字节数(最大65535)
-void W25QXX_Read(uint8_t* pBuffer,uint32_t ReadAddr,uint16_t NumByteToRead)
+void W25QXX_Read(uint8_t* pBuffer,uint32_t ReadAddr,uint32_t NumByteToRead)
 {
-    uint16_t i;
+    uint32_t i;
     W25QXX_CS0;                            //使能器件
     SPI1_ReadWriteByte(W25X_ReadData);      //发送读取命令
     if(W25QXX_TYPE==W25Q256)                //如果是W25Q256的话地址为4字节的，要发送最高8位
@@ -188,9 +188,9 @@ void W25QXX_Read(uint8_t* pBuffer,uint32_t ReadAddr,uint16_t NumByteToRead)
 //pBuffer:数据存储区
 //WriteAddr:开始写入的地址(24bit)
 //NumByteToWrite:要写入的字节数(最大256),该数不应该超过该页的剩余字节数!!!
-void W25QXX_Write_Page(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWrite)
+void W25QXX_Write_Page(uint8_t* pBuffer,uint32_t WriteAddr,uint32_t NumByteToWrite)
 {
-    uint16_t i;
+    uint32_t i;
     W25QXX_Write_Enable();                  //SET WEL
     W25QXX_CS0;                            //使能器件
     SPI1_ReadWriteByte(W25X_PageProgram);   //发送写页命令
@@ -213,9 +213,9 @@ void W25QXX_Write_Page(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWri
 //WriteAddr:开始写入的地址(24bit)
 //NumByteToWrite:要写入的字节数(最大65535)
 //CHECK OK
-void W25QXX_Write_NoCheck(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWrite)
+void W25QXX_Write_NoCheck(uint8_t* pBuffer,uint32_t WriteAddr,uint32_t NumByteToWrite)
 {
-    uint16_t pageremain;
+    uint32_t pageremain;
     pageremain=256-WriteAddr%256; //单页剩余的字节数
     if(NumByteToWrite<=pageremain)pageremain=NumByteToWrite;//不大于256个字节
     while(1)
@@ -240,12 +240,12 @@ void W25QXX_Write_NoCheck(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteTo
 //WriteAddr:开始写入的地址(24bit)
 //NumByteToWrite:要写入的字节数(最大65535)
 uint8_t W25QXX_BUFFER[4096];
-void W25QXX_Write(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWrite)
+void W25QXX_Write(uint8_t* pBuffer,uint32_t WriteAddr,uint32_t NumByteToWrite)
 {
     uint32_t secpos;
-    uint16_t secoff;
-    uint16_t secremain;
-    uint16_t i;
+    uint32_t secoff;
+    uint32_t secremain;
+    uint32_t i;
     uint8_t * W25QXX_BUF;
     W25QXX_BUF=W25QXX_BUFFER;
     secpos=WriteAddr/4096;//扇区地址

@@ -24,6 +24,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
+#include <stdbool.h>
 #include "tim.h"
 #include "adc.h"
 /* USER CODE END Includes */
@@ -45,7 +46,8 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-
+bool g_record_end_flag = false;
+bool g_play_end_flag = false;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -228,7 +230,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
     if (hadc == &hadc1){
         HAL_TIM_Base_Stop(&htim2);
         HAL_ADC_Stop_DMA(&hadc1);
-        printf("Recording end\n");
+        g_record_end_flag = true;
     }
 }
 
@@ -236,7 +238,7 @@ void HAL_DAC_ConvCpltCallbackCh1(DAC_HandleTypeDef* hdac)
 {
     HAL_TIM_Base_Stop(&htim5);
     HAL_DAC_Stop_DMA(hdac, DAC_CHANNEL_1);
-    printf("Playing end\n");
+    g_play_end_flag = true;
 }
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
