@@ -23,7 +23,6 @@
 #include "stm32f4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <stdio.h>
 #include <stdbool.h>
 #include "tim.h"
 #include "adc.h"
