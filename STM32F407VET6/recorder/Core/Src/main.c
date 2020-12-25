@@ -23,6 +23,7 @@
 #include "adc.h"
 #include "dac.h"
 #include "dma.h"
+#include "spi.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
@@ -98,6 +99,7 @@ int main(void)
   MX_TIM2_Init();
   MX_DAC_Init();
   MX_TIM5_Init();
+  MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -111,12 +113,11 @@ int main(void)
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+    while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+    }
   /* USER CODE END 3 */
 }
 
@@ -184,15 +185,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-//    if (htim->Instance == TIM5) {
-//        HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, dma_buff1[i++]>>1);
-//        if (i>=MAX_DMA_BUFF_SIZE){
-//            i=0;
-//            HAL_TIM_Base_Stop_IT(&htim5);
-//            HAL_DAC_Stop(&hdac, DAC_CHANNEL_1);
-//            printf("放音结束\n");
-//        }
-//    }
+    if (htim->Instance == TIM5) {
+        HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, dma_buff1[i++] >> 1);
+        if (i >= MAX_DMA_BUFF_SIZE) {
+            i = 0;
+            HAL_TIM_Base_Stop_IT(&htim5);
+            HAL_DAC_Stop(&hdac, DAC_CHANNEL_1);
+            printf("Playing end\n");
+        }
+    }
   /* USER CODE END Callback 1 */
 }
 
@@ -203,11 +204,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-//  __disable_irq();
-//  while (1)
-//  {
-//  }
+    /* User can add his own implementation to report the HAL error return state */
+    __disable_irq();
+    while (1) {
+    }
   /* USER CODE END Error_Handler_Debug */
 }
 

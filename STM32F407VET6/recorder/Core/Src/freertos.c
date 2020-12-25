@@ -211,14 +211,19 @@ void StartKeyTask(void *argument)
             case 4:
                 break;
             case 5:
-                printf("开始录音\n");
+                printf("Recording begin\n");
                 HAL_ADC_Start_DMA(&hadc1, (uint32_t *)dma_buff1, MAX_DMA_BUFF_SIZE);
                 HAL_TIM_Base_Start(&htim2);
                 break;
             case 6:
-                printf("开始放音\n");
-                HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, (uint32_t *)dma_buff1, MAX_DMA_BUFF_SIZE, DAC_ALIGN_12B_R);
+                printf("Playing begin\n");
+#if dac_use_tim_it
+                HAL_TIM_Base_Start_IT(&htim5);
                 HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
+#elif dac_use_dma
+                HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, (uint32_t *)dma_buff1, MAX_DMA_BUFF_SIZE, DAC_ALIGN_12B_R);
+                HAL_TIM_Base_Start(&htim5);
+#endif
                 break;
             default:
                 break;

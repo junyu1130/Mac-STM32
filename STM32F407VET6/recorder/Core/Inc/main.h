@@ -72,10 +72,19 @@ void Error_Handler(void);
 #define MIC1_ADC_GPIO_Port GPIOA
 #define AUDIO_DAC_Pin GPIO_PIN_4
 #define AUDIO_DAC_GPIO_Port GPIOA
+#define W25QXX_SCK_Pin GPIO_PIN_5
+#define W25QXX_SCK_GPIO_Port GPIOA
+#define W25QXX_MISO_Pin GPIO_PIN_6
+#define W25QXX_MISO_GPIO_Port GPIOA
+#define W25QXX_MOSI_Pin GPIO_PIN_7
+#define W25QXX_MOSI_GPIO_Port GPIOA
+#define W25QXX_CS_Pin GPIO_PIN_4
+#define W25QXX_CS_GPIO_Port GPIOC
 #define KEY1_Pin GPIO_PIN_1
 #define KEY1_GPIO_Port GPIOE
 /* USER CODE BEGIN Private defines */
-
+#define dac_use_tim_it 0
+#define dac_use_dma 1
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

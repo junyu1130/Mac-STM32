@@ -228,15 +228,15 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
     if (hadc == &hadc1){
         HAL_TIM_Base_Stop(&htim2);
         HAL_ADC_Stop_DMA(&hadc1);
-        printf("录音结束\n");
+        printf("Recording end\n");
     }
 }
 
 void HAL_DAC_ConvCpltCallbackCh1(DAC_HandleTypeDef* hdac)
 {
-    HAL_TIM_Base_Stop(&htim2);
+    HAL_TIM_Base_Stop(&htim5);
     HAL_DAC_Stop_DMA(hdac, DAC_CHANNEL_1);
-    printf("放音结束\n");
+    printf("Playing end\n");
 }
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
