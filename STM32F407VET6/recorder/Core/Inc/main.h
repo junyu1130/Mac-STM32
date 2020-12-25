@@ -58,8 +58,22 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define KEY2_Pin GPIO_PIN_2
+#define KEY2_GPIO_Port GPIOE
+#define KEY3_Pin GPIO_PIN_3
+#define KEY3_GPIO_Port GPIOE
+#define KEY4_Pin GPIO_PIN_4
+#define KEY4_GPIO_Port GPIOE
+#define KEY5_Pin GPIO_PIN_5
+#define KEY5_GPIO_Port GPIOE
+#define KEY6_Pin GPIO_PIN_6
+#define KEY6_GPIO_Port GPIOE
 #define MIC1_ADC_Pin GPIO_PIN_1
 #define MIC1_ADC_GPIO_Port GPIOA
+#define AUDIO_DAC_Pin GPIO_PIN_4
+#define AUDIO_DAC_GPIO_Port GPIOA
+#define KEY1_Pin GPIO_PIN_1
+#define KEY1_GPIO_Port GPIOE
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */

@@ -21,7 +21,7 @@
 #include "adc.h"
 
 /* USER CODE BEGIN 0 */
-uint16_t dma_buff1[MAX_DMA_BUFF_SIZE];//3秒24K个采样数据
+uint16_t dma_buff1[MAX_DMA_BUFF_SIZE];//5秒40K个采样数据
 /* USER CODE END 0 */
 
 ADC_HandleTypeDef hadc1;
@@ -44,7 +44,7 @@ void MX_ADC1_Init(void)
   hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T2_TRGO;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 1;
-  hadc1.Init.DMAContinuousRequests = ENABLE;
+  hadc1.Init.DMAContinuousRequests = DISABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {

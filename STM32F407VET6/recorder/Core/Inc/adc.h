@@ -34,7 +34,7 @@ extern "C" {
 extern ADC_HandleTypeDef hadc1;
 
 /* USER CODE BEGIN Private defines */
-#define MAX_DMA_BUFF_SIZE 24000
+#define MAX_DMA_BUFF_SIZE 40000
 /* USER CODE END Private defines */
 
 void MX_ADC1_Init(void);
